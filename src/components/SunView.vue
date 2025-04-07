@@ -1,28 +1,28 @@
 <script setup>
-import * as THREE from 'three'
-import { ref, computed, watch, onMounted } from 'vue'
-import { basicThree } from '../core/basicThree'
-import { useSun } from '../hooks/sun'
-import { solarTerms } from '../help/constant'
-import { useTag } from '@/hooks/useTag'
-import { tweenCamera } from '@/help/animate'
+import * as THREE from "three";
+import { ref, computed, watch, onMounted } from "vue";
+import { basicThree } from "../core/basicThree";
+import { useSun } from "../hooks/sun";
+import { solarTerms } from "../help/constant";
+// import { useTag } from "@/hooks/useTag";
+import { tweenCamera } from "@/help/animate";
 
-let threeObj = null
+let threeObj = null;
 onMounted(() => {
-  threeObj = new basicThree()
-  threeObj.modelUrl = './scene.glb'
-  threeObj.initModel()
-  initSun()
+  threeObj = new basicThree();
+  threeObj.modelUrl = "./zschjm.glb";
+  threeObj.initModel();
+  initSun();
 
   // 延迟加载标签
-  setTimeout(() => {
-    const { createTag, renderTag } = useTag(threeObj)
-    createTag()
-    threeObj.registRenderEvent(renderTag)
-  }, 1200)
+  // setTimeout(() => {
+  //   const { createTag, renderTag } = useTag(threeObj);
+  //   createTag();
+  //   threeObj.registRenderEvent(renderTag);
+  // }, 1200);
 
-  initClick()
-})
+  initClick();
+});
 
 const {
   initSun,
@@ -34,95 +34,98 @@ const {
   stop,
   timeInfo,
   isRunning,
-} = useSun()
-const showPicker = ref(false)
+} = useSun();
+const showPicker = ref(false);
 
-const isShowSingle = ref(false)
+const isShowSingle = ref(false);
 
 watch(sunlightPosition, (newVal) => {
-  threeObj.sunLight.position.copy(newVal)
-  threeObj.sunLight.target.position.set(0, 0, 0)
-})
+  threeObj.sunLight.position.copy(newVal);
+  threeObj.sunLight.target.position.set(0, 0, 0);
+});
 
 const onConfirmPicker = (value) => {
-  onChangeTerm(value.selectedOptions[0])
-  showPicker.value = false
-}
+  onChangeTerm(value.selectedOptions[0]);
+  showPicker.value = false;
+};
 
 const dragStart = () => {
-  stop()
-}
+  stop();
+};
 
 // 每次跳转到单体时,记录先记录当前相机位置
-const originalCameraPosition = ref()
+const originalCameraPosition = ref();
 
 const initClick = () => {
-  const raycaster = new THREE.Raycaster()
-  const mouse = new THREE.Vector2()
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
 
-  let isDragging = false
-  document.addEventListener('mousedown', () => {
-    isDragging = false
-  })
+  let isDragging = false;
+  document.addEventListener("mousedown", () => {
+    isDragging = false;
+  });
 
-  document.addEventListener('mousemove', () => {
-    isDragging = true
-  })
+  document.addEventListener("mousemove", () => {
+    isDragging = true;
+  });
 
-  document.addEventListener('mouseup', (event) => {
+  document.addEventListener("mouseup", (event) => {
     if (!isDragging) {
       if (isShowSingle.value) {
-        return
+        return;
       }
-      event.preventDefault()
+      event.preventDefault();
 
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-      raycaster.setFromCamera(mouse, threeObj.camera)
-      const intersects = raycaster.intersectObjects(threeObj.scene.children)
+      raycaster.setFromCamera(mouse, threeObj.camera);
+      const intersects = raycaster.intersectObjects(threeObj.scene.children);
 
-      console.log('intersects', intersects);
+      console.log("intersects", intersects);
 
-      if (intersects.length > 0 && (intersects[0]?.object.name.includes('Object') || intersects[0]?.object.name.includes('default'))) {
+      if (
+        intersects.length > 0 &&
+        /^\d{1,2}[A-Z]?./.test(intersects?.[0]?.object?.name)
+      ) {
         // 拿到最近的物体
-        const clickedObject = intersects[0].object?.parent
+        const clickedObject = intersects[0].object?.parent;
 
         if (!clickedObject) {
-          return
+          return;
         }
 
-        console.log('clickedObject', clickedObject);
-        isShowSingle.value = true
+        console.log("clickedObject", clickedObject);
+        isShowSingle.value = true;
 
         // 隐藏其他模型
         for (var i = threeObj.scene.children.length - 1; i >= 0; i--) {
-          const object = threeObj.scene.children[i]
+          const object = threeObj.scene.children[i];
 
           // 寻找其它楼栋,楼栋放在group中, 楼栋由多个mesh组成,
           // 修改mesh的材质的透明度
           if (object.isGroup) {
             object.children.forEach((mesh) => {
               if (mesh.uuid !== clickedObject.uuid) {
-                mesh.children.forEach(childMesh => {
-                  childMesh.material.transparent = true
-                  childMesh.material.opacity = 0.08
-                })
+                mesh.children.forEach((childMesh) => {
+                  childMesh.material.transparent = true;
+                  childMesh.material.opacity = 0.08;
+                });
               }
-            })
+            });
           }
           if (object.isCSS2DObject) {
             if (object.name !== clickedObject.name) {
-              object.element.style.opacity = 0.5
+              object.element.style.opacity = 0.5;
             } else {
-              object.element.style.opacity = 1
+              object.element.style.opacity = 1;
             }
           }
         }
 
-        originalCameraPosition.value = threeObj.camera.position.clone()
+        originalCameraPosition.value = threeObj.camera.position.clone();
 
-        const toPosition = clickedObject.position.clone()
+        const toPosition = clickedObject.position.clone();
 
         // 调整相机位置和角度
         tweenCamera(
@@ -132,19 +135,19 @@ const initClick = () => {
           666,
           -160,
           () => {
-            threeObj.controls.target.copy(clickedObject.position)
+            threeObj.controls.target.copy(clickedObject.position);
           },
-          threeObj.controls,
-        )
+          threeObj.controls
+        );
       }
     }
 
-    isDragging = false
-  })
-}
+    isDragging = false;
+  });
+};
 
 const backSandbox = () => {
-  isShowSingle.value = false
+  isShowSingle.value = false;
 
   tweenCamera(
     threeObj.camera,
@@ -154,79 +157,87 @@ const backSandbox = () => {
     0,
     () => {
       // threeObj.controls.target.copy(threeObj.originalTarget)
-    },
-  )
+    }
+  );
 
   threeObj.scene.children.forEach((child) => {
     if (child.isGroup) {
       child.children.forEach((mesh) => {
-        mesh.children.forEach(childMesh => {
-          childMesh.material.opacity = 1
-        })
-      })
+        mesh.children.forEach((childMesh) => {
+          childMesh.material.opacity = 1;
+        });
+      });
     }
-  })
-}
+  });
+};
 
-const changeModelColor = (isDefault) => {
-  const { scene } = threeObj
-  const targetGroups = scene.children.find(child => child.isGroup).children
+// const changeModelColor = (isDefault) => {
+//   const { scene } = threeObj;
+//   const targetGroups = scene.children.find((child) => child.isGroup).children;
 
-  targetGroups.forEach(group => {
-    group.children.forEach(mesh => {
-      if (isDefault) {
-        mesh.material.color.setHex(0xfffff0)
-      } else {
-        mesh.material.color.copy(mesh.material.originColor)
-      }
-    })
-  })
-}
+//   targetGroups.forEach((group) => {
+//     group.children.forEach((mesh) => {
+//       if (isDefault) {
+//         mesh.material.color.setHex(0xfffff0);
+//       } else {
+//         mesh.material.color.copy(mesh.material.originColor);
+//       }
+//     });
+//   });
+// };
 
-const tabStatus = ref('effect')
-const isEffect = computed(() => {
-  return tabStatus.value === 'effect'
-})
-const onChangeStatus = () => {
-  if (isEffect.value) {
-    changeModelColor(true)
-  } else {
-    changeModelColor()
-  }
-}
+// const tabStatus = ref("effect");
+// const isEffect = computed(() => {
+//   return tabStatus.value === "effect";
+// });
+// const onChangeStatus = () => {
+//   if (isEffect.value) {
+//     changeModelColor(true);
+//   } else {
+//     changeModelColor();
+//   }
+// };
 
-const colorTips = [
-  { title: '不足', color: '#ff4307' },
-  { title: '较弱', color: '#ffbf0c' },
-  { title: '普通', color: '#c0ff0e' },
-  { title: '良好', color: '#c0ff0e' },
-  { title: '优秀', color: '#05ff3f' },
-  { title: '极佳', color: '#04febd' },
-]
-
+// const colorTips = [
+//   { title: "不足", color: "#ff4307" },
+//   { title: "较弱", color: "#ffbf0c" },
+//   { title: "普通", color: "#c0ff0e" },
+//   { title: "良好", color: "#c0ff0e" },
+//   { title: "优秀", color: "#05ff3f" },
+//   { title: "极佳", color: "#04febd" },
+// ];
 </script>
 <template>
   <div id="sunshine">
-    <header>
+    <!-- <header>
       <div class="nav">
-        <van-tabs v-model:active="tabStatus" @change="onChangeStatus" line-width="16px" title-inactive-color="#969696"
-          title-active-color="#0059f0">
+        <van-tabs
+          v-model:active="tabStatus"
+          @change="onChangeStatus"
+          line-width="16px"
+          title-inactive-color="#969696"
+          title-active-color="#0059f0"
+        >
           <van-tab title="日照效果" name="effect"></van-tab>
           <van-tab title="日照时长" name="duration"></van-tab>
         </van-tabs>
       </div>
-    </header>
+    </header> -->
 
     <footer class="ctrl-wrapper">
       <div v-if="isShowSingle" class="back-btn" @click="backSandbox">
         <van-icon name="arrow-left" />
         <span>返回小区</span>
       </div>
-      <div v-if="!isEffect" class="gauge-container">
-        <div v-for="(color, index) in colorTips" :key="index" :style="{ backgroundColor: color.color }">{{ color.title
-          }}
+      <!-- <div v-if="!isEffect" class="gauge-container">
+        <div
+          v-for="(color, index) in colorTips"
+          :key="index"
+          :style="{ backgroundColor: color.color }"
+        >
+          {{ color.title }}
         </div>
-      </div>
+      </div> -->
       <div class="title">
         <div v-if="isShowSingle" class="back" @click="backSandbox">
           <van-icon name="arrow-left" />
@@ -241,12 +252,25 @@ const colorTips = [
         </div>
         <div class="slider">
           <span class="time">{{ timeInfo.startTime }}</span>
-          <van-slider v-model="progress" style="width: 70%" :step="5" :min="0" active-color="#eaedee"
-            inactive-color="#eaedee" bar-height="5px" :max="480" @drag-start="dragStart">
+          <van-slider
+            v-model="progress"
+            style="width: 70%"
+            :step="5"
+            :min="0"
+            active-color="#eaedee"
+            inactive-color="#eaedee"
+            bar-height="5px"
+            :max="480"
+            @drag-start="dragStart"
+          >
             <template #button>
               <div class="custom-sun-slider">
-                <div>{{ timeInfo.curHour + ':' + timeInfo.curMin }}</div>
-                <img src="../assets/sun.png" ondragstart="return false" alt="" />
+                <div>{{ timeInfo.curHour + ":" + timeInfo.curMin }}</div>
+                <img
+                  src="../assets/sun.png"
+                  ondragstart="return false"
+                  alt=""
+                />
               </div>
             </template>
           </van-slider>
@@ -257,15 +281,19 @@ const colorTips = [
           <van-icon v-else color="#fff" size="18" name="play" />
         </div>
       </div>
-
     </footer>
 
     <div class="compass">
       <div class="bg"></div>
-      <img src="../assets/compass-point.jpg">
+      <img src="../assets/compass-point.jpg" />
     </div>
     <van-popup v-model:show="showPicker" round position="bottom">
-      <van-picker :columns="solarTerms()" title="节气" @cancel="showPicker = false" @confirm="onConfirmPicker" />
+      <van-picker
+        :columns="solarTerms()"
+        title="节气"
+        @cancel="showPicker = false"
+        @confirm="onConfirmPicker"
+      />
     </van-popup>
   </div>
 </template>
@@ -298,7 +326,7 @@ const colorTips = [
     align-items: center;
     cursor: pointer;
 
-    >span {
+    > span {
       font-size: 14px;
       margin-left: 0px;
       margin-right: 4px;
@@ -312,7 +340,7 @@ const colorTips = [
     left: 0;
     top: -16px;
 
-    >div {
+    > div {
       width: calc(100% / 6);
       height: 16px;
       color: #fff;
@@ -337,7 +365,7 @@ const colorTips = [
       border-radius: 20px;
       cursor: pointer;
 
-      >i {
+      > i {
         transform: rotate(90deg);
         color: #b6b6b6;
       }
@@ -376,7 +404,7 @@ const colorTips = [
     .back {
       cursor: pointer;
       font-size: 14px;
-      color: #0059F0;
+      color: #0059f0;
     }
 
     .project-name {
@@ -398,7 +426,7 @@ header {
     height: 36px;
     border-radius: 18px;
     background: #fff;
-    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, .2);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
     overflow: hidden;
     z-index: 100;
 
@@ -407,7 +435,7 @@ header {
     }
 
     .van-tabs__line {
-      background-color: #0059F0;
+      background-color: #0059f0;
     }
 
     .van-tabs__nav--line {
@@ -424,14 +452,14 @@ header {
   -webkit-transform: translate(-50%, -50%);
   transform: translate(-50%, -50%);
 
-  >div {
+  > div {
     width: 80px;
     height: 80px;
     background-size: contain;
-    background-image: url('../assets/compass-bg.png');
+    background-image: url("../assets/compass-bg.png");
   }
 
-  >img {
+  > img {
     position: absolute;
     width: 24px;
     left: 50%;
@@ -450,7 +478,7 @@ header {
   align-items: center;
   margin-bottom: 15px;
 
-  >div {
+  > div {
     width: 46px;
     color: #fff;
     font-size: 12px;
@@ -458,7 +486,7 @@ header {
     border-radius: 100px;
   }
 
-  >img {
+  > img {
     width: 20px;
     height: 20px;
   }

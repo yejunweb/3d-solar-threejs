@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import SunView from './components/SunView.vue'
+import SunView from "./components/SunView.vue";
 </script>
 
 <style>

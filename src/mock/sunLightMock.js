@@ -1,4 +1,4 @@
-export const sunLinghtMock = {
+export const sunLightMock = {
   "11D501": 478,
   "11D402": 474,
   "11D102": 458,

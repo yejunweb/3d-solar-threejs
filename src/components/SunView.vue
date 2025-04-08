@@ -5,6 +5,8 @@ import { basicThree } from "../core/basicThree";
 import { useSun } from "../hooks/sun";
 import { solarTerms } from "../help/constant";
 import { tweenCamera } from "@/help/animate";
+import { sunLightMock } from "@/mock/sunLightMock";
+import HouseSunlightHour from "./HouseSunlightHour";
 
 let threeObj = null;
 onMounted(() => {
@@ -216,6 +218,7 @@ const backSandbox = () => {
           <van-icon v-else color="#fff" size="18" name="play" />
         </div>
       </div>
+      <HouseSunlightHour :dataSet="sunLightMock" />
     </footer>
 
     <div class="compass">
@@ -243,6 +246,7 @@ const backSandbox = () => {
   max-width: 520px;
   background-color: #fff;
   padding: 10px;
+  z-index: 9999;
 
   .back-btn {
     position: absolute;

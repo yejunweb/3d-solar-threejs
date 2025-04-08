@@ -4,7 +4,6 @@ import { ref, reactive, computed, watch, onMounted } from "vue";
 import { basicThree } from "../core/basicThree";
 import { useSun } from "../hooks/sun";
 import { solarTerms } from "../help/constant";
-// import { useTag } from "@/hooks/useTag";
 import { tweenCamera } from "@/help/animate";
 
 let threeObj = null;
@@ -13,14 +12,6 @@ onMounted(() => {
   threeObj.modelUrl = "./zschjm.glb";
   threeObj.initModel();
   initSun();
-
-  // 延迟加载标签
-  // setTimeout(() => {
-  //   const { createTag, renderTag } = useTag(threeObj);
-  //   createTag();
-  //   threeObj.registRenderEvent(renderTag);
-  // }, 1200);
-
   initClick();
 });
 
@@ -45,44 +36,8 @@ const raycaster = new THREE.Raycaster();
 let signLine;
 
 watch(sunlightPosition, (newVal) => {
-  // console.log("newVal: ", newVal);
   threeObj.sunLight.position.copy(newVal);
   threeObj.sunLight.target.position.set(0, 0, 0);
-
-  if (!threeObj.floorLs.length) return;
-  const houseMesh = threeObj.floorLs?.[0];
-  const houseWorldPosition = new THREE.Vector3();
-  houseMesh.getWorldPosition(houseWorldPosition);
-  const sunWorldPosition = new THREE.Vector3();
-  threeObj.sunLight.getWorldPosition(sunWorldPosition);
-  const direction = newVal.clone().normalize().multiplyScalar(200);
-  // const direction = sunWorldPosition.sub(houseWorldPosition).normalize();
-  if (signLine) threeObj.scene.remove(signLine);
-  signLine = new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints([houseWorldPosition, direction]),
-    new THREE.LineBasicMaterial({
-      linewidth: 4,
-      depthTest: false,
-    })
-  );
-  threeObj.scene.add(signLine);
-
-  // for (let j = 0; j < threeObj.floorLs.length; j++) {
-  //   const houseMesh = threeObj.floorLs[j];
-  //   const houseWorldPosition = new THREE.Vector3();
-  //   houseMesh.getWorldPosition(houseWorldPosition);
-  //   // const sunWorldPosition = new THREE.Vector3();
-  //   // this.sunLight.getWorldPosition(sunWorldPosition);
-  //   // const direction = sunWorldPosition.sub(houseWorldPosition).normalize();
-  //   raycaster.set(houseWorldPosition, newVal.normalize());
-  //   // console.log('direction: ', direction);
-  //   // console.log('houseWorldPosition: ', houseWorldPosition);
-  //   const intersects = raycaster.intersectObjects(threeObj.floorLs, true);
-  //   if (!floorMap?.[threeObj.floorLs[j]?.["name"]])
-  //     floorMap[threeObj.floorLs[j]["name"]] = 0;
-  //   if (!intersects.length) floorMap[threeObj.floorLs[j]["name"]] += 1;
-  //   console.log("floorMap: ", floorMap);
-  // }
 });
 
 const onConfirmPicker = (value) => {
@@ -122,8 +77,6 @@ const initClick = () => {
 
       raycaster.setFromCamera(mouse, threeObj.camera);
       const intersects = raycaster.intersectObjects(threeObj.scene.children);
-
-      console.log("intersects", intersects);
 
       if (
         intersects.length > 0 &&
@@ -211,74 +164,15 @@ const backSandbox = () => {
     }
   });
 };
-
-// const changeModelColor = (isDefault) => {
-//   const { scene } = threeObj;
-//   const targetGroups = scene.children.find((child) => child.isGroup).children;
-
-//   targetGroups.forEach((group) => {
-//     group.children.forEach((mesh) => {
-//       if (isDefault) {
-//         mesh.material.color.setHex(0xfffff0);
-//       } else {
-//         mesh.material.color.copy(mesh.material.originColor);
-//       }
-//     });
-//   });
-// };
-
-// const tabStatus = ref("effect");
-// const isEffect = computed(() => {
-//   return tabStatus.value === "effect";
-// });
-// const onChangeStatus = () => {
-//   if (isEffect.value) {
-//     changeModelColor(true);
-//   } else {
-//     changeModelColor();
-//   }
-// };
-
-// const colorTips = [
-//   { title: "不足", color: "#ff4307" },
-//   { title: "较弱", color: "#ffbf0c" },
-//   { title: "普通", color: "#c0ff0e" },
-//   { title: "良好", color: "#c0ff0e" },
-//   { title: "优秀", color: "#05ff3f" },
-//   { title: "极佳", color: "#04febd" },
-// ];
 </script>
+
 <template>
   <div id="sunshine">
-    <!-- <header>
-      <div class="nav">
-        <van-tabs
-          v-model:active="tabStatus"
-          @change="onChangeStatus"
-          line-width="16px"
-          title-inactive-color="#969696"
-          title-active-color="#0059f0"
-        >
-          <van-tab title="日照效果" name="effect"></van-tab>
-          <van-tab title="日照时长" name="duration"></van-tab>
-        </van-tabs>
-      </div>
-    </header> -->
-
     <footer class="ctrl-wrapper">
       <div v-if="isShowSingle" class="back-btn" @click="backSandbox">
         <van-icon name="arrow-left" />
         <span>返回小区</span>
       </div>
-      <!-- <div v-if="!isEffect" class="gauge-container">
-        <div
-          v-for="(color, index) in colorTips"
-          :key="index"
-          :style="{ backgroundColor: color.color }"
-        >
-          {{ color.title }}
-        </div>
-      </div> -->
       <div class="title">
         <div v-if="isShowSingle" class="back" @click="backSandbox">
           <van-icon name="arrow-left" />
@@ -374,24 +268,6 @@ const backSandbox = () => {
     }
   }
 
-  .gauge-container {
-    display: flex;
-    position: absolute;
-    width: 100%;
-    left: 0;
-    top: -16px;
-
-    > div {
-      width: calc(100% / 6);
-      height: 16px;
-      color: #fff;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-  }
-
   .sun-ctrl {
     display: flex;
     justify-content: space-between;
@@ -452,35 +328,6 @@ const backSandbox = () => {
       color: #252525;
       font-size: 14px;
       font-weight: 500;
-    }
-  }
-}
-
-header {
-  /deep/ .nav {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 18px;
-    margin: auto;
-    width: 174px;
-    height: 36px;
-    border-radius: 18px;
-    background: #fff;
-    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
-    overflow: hidden;
-    z-index: 100;
-
-    .van-tabs--line .van-tabs__wrap {
-      height: 36px;
-    }
-
-    .van-tabs__line {
-      background-color: #0059f0;
-    }
-
-    .van-tabs__nav--line {
-      padding-bottom: 10px;
     }
   }
 }

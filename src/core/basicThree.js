@@ -35,7 +35,6 @@ export class basicThree {
     // 记录每户信息
     this.floorLs = [];
     this.floorMap = {};
-    this.building;
 
     this.init();
   }
@@ -148,7 +147,6 @@ export class basicThree {
       this.modelUrl,
       (gltf) => {
         const model = gltf.scene;
-        // console.log("model: ", model);
 
         // 遍历模型中的所有子对象，设置阴影接收和投射属性
         model.traverse((child) => {
@@ -185,16 +183,9 @@ export class basicThree {
           }
         });
 
-        // console.log("this.floorLs: ", this.floorLs);
-
         model.scale.set(this.modelScale, this.modelScale, this.modelScale);
-
-        this.building = gltf.scene;
-        // console.log("this.building: ", this.building);
         this.scene.add(gltf.scene);
-
         this.set2DTag();
-
         this.setSunlightHours();
       },
       undefined,
@@ -213,68 +204,35 @@ export class basicThree {
 
   /** 日照时间遍历 */
   async setSunlightHours() {
-    const {
-      initSun,
-      onChangeTerm,
-      sunlightPosition,
-      progress,
-      getAllSunlightPos,
-    } = useSun();
-
-    initSun();
+    const { getAllSunlightPos } = useSun();
+    const allSunlightPos = getAllSunlightPos();
 
     const raycaster = new THREE.Raycaster();
 
-    const allSunlightPos = getAllSunlightPos();
-    // console.log("allSunlightPos: ", allSunlightPos);
-
     for (let i = 0; i < allSunlightPos.length; i++) {
       const sunlightPosition = allSunlightPos[i];
-      console.log("sunlightPosition: ", sunlightPosition);
-      // progress.value = i;
-      // 在下一个事件循环中执行
-      // await new Promise((reslove) => {
-      //   reslove();
-      // }).then(() => {
-      // 获取太阳光直射坐标
-      // console.log("sunlightPosition: ", sunlightPosition.value);
-      // if (!sunlightPosition.value) return;
       this.sunLight.position.copy(sunlightPosition);
-      // const houseMesh = this.floorLs[j];
-      // const houseWorldPosition = new THREE.Vector3();
-      // houseMesh.getWorldPosition(houseWorldPosition);
-      // const direction = sunlightPosition.value
-      //   .sub(houseWorldPosition)
-      //   .normalize();
-      // raycaster.set(houseWorldPosition, direction);
-      // // console.log('direction: ', direction);
-      // // console.log('houseWorldPosition: ', houseWorldPosition);
-      // const intersects = raycaster.intersectObjects(
-      //   allBuildingMeshes,
-      //   true
-      // );
+      console.log("sunlightPosition: ", sunlightPosition);
 
       for (let j = 0; j < this.floorLs.length; j++) {
-        // console.log("j: ", j);
         const houseMesh = this.floorLs[j];
         const houseWorldPosition = new THREE.Vector3();
         houseMesh.getWorldPosition(houseWorldPosition);
+
         const sunWorldPosition = new THREE.Vector3();
         this.sunLight.getWorldPosition(sunWorldPosition);
         const direction = sunWorldPosition.sub(houseWorldPosition).normalize();
+
         raycaster.set(houseWorldPosition, direction);
-        // console.log('direction: ', direction);
-        // console.log('houseWorldPosition: ', houseWorldPosition);
-        const allBuildingMeshes = this.floorLs.filter(
+        const allMeshes = this.floorLs.filter(
           (v) => v instanceof THREE.Mesh && v !== houseMesh
         );
-        const intersects = raycaster.intersectObjects(allBuildingMeshes, true);
-        // console.log("intersects: ", intersects);
+        const intersects = raycaster.intersectObjects(allMeshes, true);
+
         if (!this.floorMap?.[this.floorLs[j]?.["name"]])
           this.floorMap[this.floorLs[j]["name"]] = 0;
         if (!intersects.length) this.floorMap[this.floorLs[j]["name"]] += 1;
       }
-      // });
     }
     console.log("this.floorMap: ", this.floorMap);
   }
@@ -370,22 +328,22 @@ export class basicThree {
 
   // 设置地面
   basicfloor() {
-    const planeGeometry = new THREE.CircleGeometry(200);
-    // const texture = new THREE.TextureLoader().load("./bg.jpg");
-    var planeMaterial = new THREE.MeshLambertMaterial({
-      color: 0x999999,
-      side: THREE.DoubleSide,
-    });
-    // texture.colorSpace = THREE.SRGBColorSpace;
-    // texture.magFilter = THREE.LinearFilter;
-    // texture.minFilter = THREE.LinearMipmapLinearFilter;
-
-    // const planeMaterial = new THREE.MeshStandardMaterial({
-    //   map: texture,
-    //   reflectivity: 0, // 反射率
-    //   roughness: 1, // 粗糙度
-    //   metalness: 0,
+    const planeGeometry = new THREE.PlaneGeometry(2000, 2000);
+    const texture = new THREE.TextureLoader().load("./bg.jpg");
+    // var planeMaterial = new THREE.MeshLambertMaterial({
+    //   color: 0x999999,
+    //   side: THREE.DoubleSide,
     // });
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+
+    const planeMaterial = new THREE.MeshStandardMaterial({
+      map: texture,
+      reflectivity: 0, // 反射率
+      roughness: 1, // 粗糙度
+      metalness: 0,
+    });
 
     this.plane = new THREE.Mesh(planeGeometry, planeMaterial);
     this.plane.rotation.x = -0.5 * Math.PI;

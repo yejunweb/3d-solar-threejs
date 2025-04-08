@@ -3,7 +3,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { useTag } from "@/hooks/useTag";
-import { useSun } from "@/hooks/sun";
+import { useSun } from "@/hooks/mySun";
 import * as TWEEN from "tween.js";
 import * as Stats from "stats.js";
 
@@ -34,7 +34,8 @@ export class basicThree {
 
     // 记录每户信息
     this.floorLs = [];
-    this.floorMap = {}
+    this.floorMap = {};
+    this.building;
 
     this.init();
   }
@@ -147,7 +148,7 @@ export class basicThree {
       this.modelUrl,
       (gltf) => {
         const model = gltf.scene;
-        console.log("model: ", model);
+        // console.log("model: ", model);
 
         // 遍历模型中的所有子对象，设置阴影接收和投射属性
         model.traverse((child) => {
@@ -168,7 +169,7 @@ export class basicThree {
 
           // 记录每户信息
           if (/^\d{1,2}[A-Z]\d{3}$/.test(child.name)) {
-            this.floorLs.push(child)
+            this.floorLs.push(child);
           }
 
           if (child.isMesh) {
@@ -176,10 +177,7 @@ export class basicThree {
             copyMaterial.side = THREE.DoubleSide;
             copyMaterial.originColor = copyMaterial.color.clone();
             copyMaterial.color.setHex(0xfffff0);
-            child.material =
-              child.name === "11D202"
-                ? new THREE.MeshPhongMaterial({ color: 0x0000ff })
-                : copyMaterial;
+            child.material = copyMaterial;
 
             //物体遮挡阴影
             child.castShadow = true;
@@ -187,16 +185,17 @@ export class basicThree {
           }
         });
 
-        console.log('this.floorLs: ', this.floorLs);
+        // console.log("this.floorLs: ", this.floorLs);
 
         model.scale.set(this.modelScale, this.modelScale, this.modelScale);
 
         this.building = gltf.scene;
+        // console.log("this.building: ", this.building);
         this.scene.add(gltf.scene);
 
         this.set2DTag();
 
-        this.setSunlightHours()
+        this.setSunlightHours();
       },
       undefined,
       function (error) {
@@ -219,57 +218,65 @@ export class basicThree {
       onChangeTerm,
       sunlightPosition,
       progress,
+      getAllSunlightPos,
     } = useSun();
-    
-    initSun()
+
+    initSun();
 
     const raycaster = new THREE.Raycaster();
 
-    for (let i = 0; i < 60; i++) {
-      progress.value = i
-      // 在下一个事件循环中执行
-      await new Promise((reslove) => {
-        reslove()
-      }).then(() => {
-        // 获取太阳光直射坐标
-        console.log('sunlightPosition: ', sunlightPosition.value);
-        if (!sunlightPosition.value) return
-          // const houseMesh = this.floorLs[j];
-          // const houseWorldPosition = new THREE.Vector3();
-          // houseMesh.getWorldPosition(houseWorldPosition);
-          // const direction = sunlightPosition.value
-          //   .sub(houseWorldPosition)
-          //   .normalize();
-          // raycaster.set(houseWorldPosition, direction);
-          // // console.log('direction: ', direction);
-          // // console.log('houseWorldPosition: ', houseWorldPosition);
-          // const intersects = raycaster.intersectObjects(
-          //   allBuildingMeshes,
-          //   true
-          // );
-        for (let j = 0; j < this.floorLs.length; j++) {
-          console.log('j: ', j);
-          const houseMesh = this.floorLs[j];
-          const houseWorldPosition = new THREE.Vector3();
-          houseMesh.getWorldPosition(houseWorldPosition);
-          const direction = sunlightPosition.value
-            .sub(houseWorldPosition)
-            .normalize();
-          raycaster.set(houseWorldPosition, direction);
-          // console.log('direction: ', direction);
-          // console.log('houseWorldPosition: ', houseWorldPosition);
-          const intersects = raycaster.intersectObjects(
-            this.floorLs,
-            true
-          );
-          console.log('intersects: ', intersects);
-          if (!this.floorMap?.[this.floorLs[j]?.['name']]) this.floorMap[this.floorLs[j]['name']] = 0
-          if (intersects.length) this.floorMap[this.floorLs[j]['name']] += 1
-        }
-      })
-    }
-    console.log('this.floorMap: ', this.floorMap);
+    const allSunlightPos = getAllSunlightPos();
+    // console.log("allSunlightPos: ", allSunlightPos);
 
+    for (let i = 0; i < allSunlightPos.length; i++) {
+      const sunlightPosition = allSunlightPos[i];
+      console.log("sunlightPosition: ", sunlightPosition);
+      // progress.value = i;
+      // 在下一个事件循环中执行
+      // await new Promise((reslove) => {
+      //   reslove();
+      // }).then(() => {
+      // 获取太阳光直射坐标
+      // console.log("sunlightPosition: ", sunlightPosition.value);
+      // if (!sunlightPosition.value) return;
+      this.sunLight.position.copy(sunlightPosition);
+      // const houseMesh = this.floorLs[j];
+      // const houseWorldPosition = new THREE.Vector3();
+      // houseMesh.getWorldPosition(houseWorldPosition);
+      // const direction = sunlightPosition.value
+      //   .sub(houseWorldPosition)
+      //   .normalize();
+      // raycaster.set(houseWorldPosition, direction);
+      // // console.log('direction: ', direction);
+      // // console.log('houseWorldPosition: ', houseWorldPosition);
+      // const intersects = raycaster.intersectObjects(
+      //   allBuildingMeshes,
+      //   true
+      // );
+
+      for (let j = 0; j < this.floorLs.length; j++) {
+        // console.log("j: ", j);
+        const houseMesh = this.floorLs[j];
+        const houseWorldPosition = new THREE.Vector3();
+        houseMesh.getWorldPosition(houseWorldPosition);
+        const sunWorldPosition = new THREE.Vector3();
+        this.sunLight.getWorldPosition(sunWorldPosition);
+        const direction = sunWorldPosition.sub(houseWorldPosition).normalize();
+        raycaster.set(houseWorldPosition, direction);
+        // console.log('direction: ', direction);
+        // console.log('houseWorldPosition: ', houseWorldPosition);
+        const allBuildingMeshes = this.floorLs.filter(
+          (v) => v instanceof THREE.Mesh && v !== houseMesh
+        );
+        const intersects = raycaster.intersectObjects(allBuildingMeshes, true);
+        // console.log("intersects: ", intersects);
+        if (!this.floorMap?.[this.floorLs[j]?.["name"]])
+          this.floorMap[this.floorLs[j]["name"]] = 0;
+        if (!intersects.length) this.floorMap[this.floorLs[j]["name"]] += 1;
+      }
+      // });
+    }
+    console.log("this.floorMap: ", this.floorMap);
   }
 
   initModel() {

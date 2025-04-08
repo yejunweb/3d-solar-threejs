@@ -182,6 +182,7 @@ onMounted(() => {
           windowMesh.getWorldPosition(windowWorldPosition);
           const sunWorldPosition = new THREE.Vector3();
           directionalLight.getWorldPosition(sunWorldPosition);
+          console.log("sunWorldPosition: ", sunWorldPosition);
           const direction = sunWorldPosition
             .sub(windowWorldPosition)
             .normalize();

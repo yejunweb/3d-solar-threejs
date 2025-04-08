@@ -1,6 +1,6 @@
 <script setup>
 import * as THREE from "three";
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, reactive, computed, watch, onMounted } from "vue";
 import { basicThree } from "../core/basicThree";
 import { useSun } from "../hooks/sun";
 import { solarTerms } from "../help/constant";
@@ -39,9 +39,50 @@ const showPicker = ref(false);
 
 const isShowSingle = ref(false);
 
+const floorMap = reactive({});
+const raycaster = new THREE.Raycaster();
+
+let signLine;
+
 watch(sunlightPosition, (newVal) => {
+  // console.log("newVal: ", newVal);
   threeObj.sunLight.position.copy(newVal);
   threeObj.sunLight.target.position.set(0, 0, 0);
+
+  if (!threeObj.floorLs.length) return;
+  const houseMesh = threeObj.floorLs?.[0];
+  const houseWorldPosition = new THREE.Vector3();
+  houseMesh.getWorldPosition(houseWorldPosition);
+  const sunWorldPosition = new THREE.Vector3();
+  threeObj.sunLight.getWorldPosition(sunWorldPosition);
+  const direction = newVal.clone().normalize().multiplyScalar(200);
+  // const direction = sunWorldPosition.sub(houseWorldPosition).normalize();
+  if (signLine) threeObj.scene.remove(signLine);
+  signLine = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([houseWorldPosition, direction]),
+    new THREE.LineBasicMaterial({
+      linewidth: 4,
+      depthTest: false,
+    })
+  );
+  threeObj.scene.add(signLine);
+
+  // for (let j = 0; j < threeObj.floorLs.length; j++) {
+  //   const houseMesh = threeObj.floorLs[j];
+  //   const houseWorldPosition = new THREE.Vector3();
+  //   houseMesh.getWorldPosition(houseWorldPosition);
+  //   // const sunWorldPosition = new THREE.Vector3();
+  //   // this.sunLight.getWorldPosition(sunWorldPosition);
+  //   // const direction = sunWorldPosition.sub(houseWorldPosition).normalize();
+  //   raycaster.set(houseWorldPosition, newVal.normalize());
+  //   // console.log('direction: ', direction);
+  //   // console.log('houseWorldPosition: ', houseWorldPosition);
+  //   const intersects = raycaster.intersectObjects(threeObj.floorLs, true);
+  //   if (!floorMap?.[threeObj.floorLs[j]?.["name"]])
+  //     floorMap[threeObj.floorLs[j]["name"]] = 0;
+  //   if (!intersects.length) floorMap[threeObj.floorLs[j]["name"]] += 1;
+  //   console.log("floorMap: ", floorMap);
+  // }
 });
 
 const onConfirmPicker = (value) => {

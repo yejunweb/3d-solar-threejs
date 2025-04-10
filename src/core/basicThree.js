@@ -191,22 +191,22 @@ export class basicThree {
                 /**
                  * 视野计算
                  */
-                const axesHelper = new THREE.AxesHelper(150);
-                this.scene.add(axesHelper);
+                // const axesHelper = new THREE.AxesHelper(150);
+                // this.scene.add(axesHelper);
 
                 // 设定当前户
                 const curHouseMesh = this.floorLs.find(v => v.name === '8D701');
                 const curHousePos = new THREE.Vector3();
                 curHouseMesh.getWorldPosition(curHousePos);
-                this.scene.add(this.createSphere(curHousePos));
+                // this.scene.add(this.createSphere(curHousePos));
 
                 // 获取当前户的两个端点
                 const curMeshBox = new THREE.Box3().setFromObject(curHouseMesh);
                 const boxHelper = new THREE.BoxHelper(curHouseMesh, 0xff0000);
                 this.scene.add(boxHelper);
                 const { min, max } = curMeshBox;
-                this.scene.add(this.createSphere(min.clone(), '#5470c6')); // 左下角
-                this.scene.add(this.createSphere(max.clone(), '#91cc75')); // 右下角
+                // this.scene.add(this.createSphere(min.clone(), '#5470c6')); // 左下角
+                // this.scene.add(this.createSphere(max.clone(), '#91cc75')); // 右下角
 
                 // 创建扇形
                 this.fieldMesh = this.createFanMesh();
@@ -277,11 +277,11 @@ export class basicThree {
         const direction = new THREE.Vector3().subVectors(target, source).normalize();
         const verticalDir = new THREE.Vector3(-direction.z, 0, direction.x);
 
-        const arrowHelperDirection = new THREE.ArrowHelper(new THREE.Vector3().subVectors(target, source), midpoint, 50, 0xfac858); // 橙色
-        this.scene.add(arrowHelperDirection);
+        // const arrowHelperDirection = new THREE.ArrowHelper(new THREE.Vector3().subVectors(target, source), midpoint, 50, 0xfac858); // 橙色
+        // this.scene.add(arrowHelperDirection);
 
-        const arrowHelperVerticalDir = new THREE.ArrowHelper(verticalDir.clone(), midpoint, 50, 0xee6666); // 红色
-        this.scene.add(arrowHelperVerticalDir);
+        // const arrowHelperVerticalDir = new THREE.ArrowHelper(verticalDir.clone(), midpoint, 50, 0xee6666); // 红色
+        // this.scene.add(arrowHelperVerticalDir);
 
         const maxRadius = 120; // 最大可视距离
         const angleRange = (Math.PI / 3) * 2; // 视野角度 120°
@@ -290,7 +290,7 @@ export class basicThree {
 
         // 设置观测出发点
         const originPos = midpoint.clone().add(new THREE.Vector3(0, 0, 0.1));
-        this.scene.add(this.createSphere(originPos, '#9a60b4'));
+        // this.scene.add(this.createSphere(originPos, '#9a60b4'));
 
         const fieldGeometry = this.fieldMesh.geometry;
         const positions = fieldGeometry.attributes.position.array;

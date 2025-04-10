@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { useTag } from '@/hooks/useTag';
 import { useSun } from '@/hooks/mySun';
 import * as TWEEN from 'tween.js';
@@ -232,6 +233,22 @@ export class basicThree {
         return sphere;
     }
 
+    // 创建标签
+    createLabel(text, position, id) {
+        const div = document.createElement('div');
+        div.id = `${id}`;
+        div.className = 'label';
+        div.textContent = text;
+        const i = document.createElement('i');
+        i.dataset.id = id;
+        i.className = 'el-icon-close';
+        div.appendChild(i);
+        const divLabel = new CSS2DObject(div);
+        divLabel.position.copy(position);
+        return divLabel;
+    }
+
+    // 创建扇形网格
     createFanMesh() {
         const segments = 120;
         const geometry = new THREE.BufferGeometry();
@@ -243,7 +260,6 @@ export class basicThree {
         }
         geometry.setIndex(indices);
 
-        // 创建扇形网格
         const fanMaterial = new THREE.MeshBasicMaterial({
             color: 0xffff00,
             side: THREE.DoubleSide,
@@ -273,7 +289,7 @@ export class basicThree {
         const raycaster = new THREE.Raycaster();
 
         // 设置观测出发点
-        const originPos = midpoint.clone().add(new THREE.Vector3(0, 0, 0.1)); 
+        const originPos = midpoint.clone().add(new THREE.Vector3(0, 0, 0.1));
         this.scene.add(this.createSphere(originPos, '#9a60b4'));
 
         const fieldGeometry = this.fieldMesh.geometry;
@@ -314,6 +330,35 @@ export class basicThree {
         }
         fieldGeometry.attributes.position.needsUpdate = true;
         fieldGeometry.computeBoundingSphere();
+
+        const posArr = fieldGeometry.attributes.position.array;
+        // console.log('posArr: ', posArr);
+        // for (let i = 0; i < posArr.length; i += 3) {
+        //     const pos = new THREE.Vector3(posArr[i], posArr[i + 1], posArr[i + 2]);
+        //     this.scene.add(this.createSphere(pos, '#ffffff'));
+        //     this.scene.add(this.createLabel(i === 0 ? i : i / 3, pos, i === 0 ? i : i / 3));
+        // }
+
+        // 视野面积计算
+        let meshArea = 0;
+        const posA = new THREE.Vector3(posArr[0], posArr[1], posArr[2]); // 取中心点
+        for (let i = 3; i < posArr.length; i += 6) {
+            if (!posArr[i + 5]) break;
+            const posB = new THREE.Vector3(posArr[i], posArr[i + 1], posArr[i + 2]);
+            const posC = new THREE.Vector3(posArr[i + 3], posArr[i + 4], posArr[i + 5]);
+            const triangleArea = this.calculateTriangleArea(posA, posB, posC);
+            meshArea += triangleArea;
+        }
+        console.log('meshArea: ', meshArea);
+    }
+
+    // 三角形面积计算
+    calculateTriangleArea(vertexA, vertexB, vertexC) {
+        const AB = new THREE.Vector3().subVectors(vertexB, vertexA);
+        const AC = new THREE.Vector3().subVectors(vertexC, vertexA);
+        // 计算叉积
+        const cross = new THREE.Vector3().crossVectors(AB, AC);
+        return cross.length() / 2;
     }
 
     /** 设置2D标签展示 */

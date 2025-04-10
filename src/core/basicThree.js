@@ -35,6 +35,8 @@ export class basicThree {
     // 记录每户信息
     this.floorLs = [];
     this.floorMap = {};
+    this.fieldMesh;
+    this.globalMesh;
 
     this.init();
   }
@@ -186,13 +188,203 @@ export class basicThree {
         model.scale.set(this.modelScale, this.modelScale, this.modelScale);
         this.scene.add(gltf.scene);
         this.set2DTag();
-        this.setSunlightHours();
+
+        this.globalMesh = model;
+        // this.setSunlightHours();
+
+        // const houseMesh = this.floorLs[0];
+        // console.log("this.floorLs: ", this.floorLs);
+        // const houseWorldPosition = new THREE.Vector3();
+        // houseMesh.getWorldPosition(houseWorldPosition);
+
+        // const geometry = new THREE.ConeGeometry(30, 120, 20);
+        // const material = new THREE.MeshBasicMaterial({
+        //   color: 0x3c78d8,
+        //   // depthTest: false,
+        //   // side: THREE.DoubleSide,
+        //   transparent: true,
+        //   opacity: 0.75,
+        // });
+        // const cone = new THREE.Mesh(geometry, material);
+
+        // cone.position.set(
+        //   houseWorldPosition.x,
+        //   houseWorldPosition.y,
+        //   houseWorldPosition.z + 60
+        // );
+        // cone.rotation.x = -0.5 * Math.PI;
+
+        // this.scene.add(cone);
+
+        // const geometry = new THREE.CircleGeometry(
+        //   80,
+        //   360,
+        //   (Math.PI / 180) * 208, // 180 + (180 - 124) / 2
+        //   (Math.PI / 180) * 124
+        // );
+        // const material = new THREE.MeshBasicMaterial({
+        //   color: 0xffff00,
+        //   // depthTest: false,
+        //   side: THREE.DoubleSide,
+        //   transparent: true,
+        //   opacity: 0.75,
+        // });
+        // const circle = new THREE.Mesh(geometry, material);
+        // circle.position.set(
+        //   houseWorldPosition.x,
+        //   houseWorldPosition.y,
+        //   houseWorldPosition.z
+        // );
+        // circle.rotation.x = -0.5 * Math.PI;
+        // this.scene.add(circle);
+
+        // const circle2 = circle.clone()
+        // circle2.material.color.set('#6daefe')
+        // circle2.rotation.y = -0.5 * Math.PI;
+        // this.scene.add(circle2);
+
+        const axesHelper = new THREE.AxesHelper(150);
+        this.scene.add(axesHelper);
+
+        const sourceMesh = this.floorLs.find((v) => v.name === "8D701");
+        const targetMesh = this.floorLs.find((v) => v.name === "18D701");
+        const sourcePos = new THREE.Vector3();
+        sourceMesh.getWorldPosition(sourcePos);
+        const targetPos = new THREE.Vector3();
+        targetMesh.getWorldPosition(targetPos);
+
+        this.scene.add(this.createSphere(sourcePos));
+        this.scene.add(this.createSphere(targetPos));
+
+
+        const box = new THREE.Box3().setFromObject(sourceMesh);
+        console.log("Model bounding box:", box);
+        const boxHelper = new THREE.BoxHelper(sourceMesh, 0xff0000);
+        this.scene.add(boxHelper);
+
+        this.scene.add(this.createSphere(box.min.clone()));
+        this.scene.add(this.createSphere(box.max.clone()));
+
+        this.scene.add(this.createSphere(new THREE.Vector3(box.max.clone().x + 10, box.max.clone().y, box.max.clone().z)));
+
+        this.fieldMesh = this.createFanMesh();
+        this.scene.add(this.fieldMesh);
+
+        this.createfieldView(targetPos, sourcePos);
       },
       undefined,
       function (error) {
         console.error(error);
       }
     );
+  }
+
+  createSphere(position, color = 0xffff00) {
+    var geometry = new THREE.SphereGeometry(1, 32, 32);
+    var material = new THREE.MeshBasicMaterial({
+      color: color,
+      depthTest: false,
+    });
+    var sphere = new THREE.Mesh(geometry, material);
+    sphere.position.set(position.x, position.y, position.z);
+    return sphere;
+  }
+
+  createFanMesh() {
+    const segments = 120;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array((segments + 2) * 3); // 中心点 + 边缘点
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const indices = [];
+    for (let i = 0; i < segments; i++) {
+      indices.push(0, i + 1, i + 2);
+    }
+    geometry.setIndex(indices);
+    // 创建扇形网格
+    const fanMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.5,
+    });
+
+    return new THREE.Mesh(geometry, fanMaterial);
+  }
+
+  createfieldView(pointA, pointB) {
+    const midpoint = new THREE.Vector3().lerpVectors(pointA, pointB, 0.5);
+    // 计算垂直方向
+    const direction = new THREE.Vector3()
+      .subVectors(pointB, pointA)
+      .normalize();
+    const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x);
+    this.scene.add(this.createSphere(perpendicular));
+
+    const finalCenter = midpoint
+      .clone()
+      .add(perpendicular.clone().multiplyScalar(1));
+
+    const maxRadius = 150;
+    const angleRange = (Math.PI / 3) * 2; // 视野角度
+    const segments = 120; // 分段数
+    const raycaster = new THREE.Raycaster();
+
+    const basePos = finalCenter.clone().add(new THREE.Vector3(0, 1.5, 0)); // 出发点
+    this.scene.add(this.createSphere(basePos, "#c46582"));
+
+    const fieldGeometry = this.fieldMesh.geometry;
+    const positions = fieldGeometry.attributes.position.array;
+    console.log("positions: ", positions);
+
+    // 设置中心点
+    positions[0] = finalCenter.x;
+    positions[1] = finalCenter.y + 1.5;
+    positions[2] = finalCenter.z;
+
+    for (let i = 0; i <= segments; i++) {
+      const angle = -angleRange / 2 + (i / segments) * angleRange;
+      const dir = perpendicular
+        .clone()
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), angle)
+        .normalize();
+      this.scene.add(this.createSphere(dir.clone().multiplyScalar(100)));
+
+      const box = new THREE.Box3().setFromObject(this.globalMesh);
+      console.log("Model bounding box:", box);
+
+      // const boxHelper = new THREE.BoxHelper(this.globalMesh, 0xff0000);
+      // this.scene.add(boxHelper);
+
+      // if (!box.containsPoint(basePos)) {
+      //   console.warn("Ray origin is outside model bounds");
+      // }
+
+      // const arrowHelper = new THREE.ArrowHelper(
+      //   dir,
+      //   basePos.clone(),
+      //   100,
+      //   0xffff00
+      // );
+      // this.scene.add(arrowHelper);
+
+      raycaster.set(basePos, dir);
+      const intersects = raycaster.intersectObjects([this.globalMesh], true);
+
+      console.log("intersects: ", intersects);
+
+      let distance = maxRadius;
+      if (intersects.length > 0 && intersects[0].distance < maxRadius) {
+        distance = intersects[0].distance;
+      }
+
+      const idx = (i + 1) * 3;
+      const endPoint = basePos.clone().add(dir.multiplyScalar(distance));
+      positions[idx] = endPoint.x;
+      positions[idx + 1] = basePos.y;
+      positions[idx + 2] = endPoint.z;
+    }
+    fieldGeometry.attributes.position.needsUpdate = true;
+    fieldGeometry.computeBoundingSphere();
   }
 
   /** 设置2D标签展示 */

@@ -170,7 +170,7 @@ const backSandbox = () => {
 
 <template>
   <div id="sunshine">
-    <footer class="ctrl-wrapper">
+    <footer class="ctrl-wrapper" v-show="false">
       <div v-if="isShowSingle" class="back-btn" @click="backSandbox">
         <van-icon name="arrow-left" />
         <span>返回小区</span>

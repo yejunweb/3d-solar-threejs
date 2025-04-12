@@ -188,6 +188,37 @@ export class basicThree {
                 this.globalMesh = model;
                 // this.setSunlightHours();
 
+                const canvas = document.createElement('canvas');
+                canvas.className = 'worker-canvas';
+                canvas.style.display = 'none';
+                document.body.appendChild(canvas);
+                const offscreen = canvas.transferControlToOffscreen();
+                const sunlightWorker = new Worker(new URL('../worker/sunlightWorker.js', import.meta.url), {
+                    type: 'module',
+                });
+                sunlightWorker.postMessage(
+                    {
+                        type: 'init',
+                        data: {
+                            canvas: offscreen,
+                        },
+                    },
+                    [offscreen]
+                );
+                sunlightWorker.onmessage = e => {
+                    const { type, data } = e.data;
+                    switch (type) {
+                        case 'ready':
+                            console.log('is ready');
+                            sunlightWorker.postMessage({ type: 'loadModel', data: '/zschjm.glb' });
+                        case 'modelLoaded':
+                            console.log('is modelLoaded');
+                            sunlightWorker.postMessage({ type: 'calculate' });
+                        case 'result':
+                            console.log('result: ', data);
+                    }
+                };
+
                 /**
                  * 视野计算
                  */
@@ -212,7 +243,7 @@ export class basicThree {
                 this.fieldMesh = this.createFanMesh();
                 this.scene.add(this.fieldMesh);
 
-                this.createfieldView(min.clone(), max.clone());
+                // this.createfieldView(min.clone(), max.clone());
             },
             undefined,
             function (error) {

@@ -15,6 +15,15 @@ let houseLs = []; // 记录每户信息
 let globalMesh; // 全局模型信息
 let fieldMesh; // 视野检测用扇形
 
+let allSunPosition; // 每个节气对应日照坐标信息
+
+let processTotal = 0; // 总计进度
+let processCur = {
+    // 当前进度
+    sunLightHour: 0,
+    fieldViewArea: 0,
+};
+
 // 场景初始化
 const initialize = ({ canvas }) => {
     scene = new THREE.Scene();
@@ -54,9 +63,7 @@ const initialize = ({ canvas }) => {
     scene.add(sunLight);
 };
 
-/**
- * 模型加载
- */
+// 模型加载
 const loadModel = url => {
     modelUrl = url;
 
@@ -97,6 +104,13 @@ const loadModel = url => {
                 // 保存全局模型信息（视野分析）
                 globalMesh = model;
 
+                // 获取所有节气对应日照时间
+                const { getAllSunlightPos } = useSun();
+                allSunPosition = getAllSunlightPos();
+
+                // 计算总进度（节气 * 日照时间计数 + 视野计算户计数）
+                processTotal = allSunPosition.length + houseLs.length;
+
                 // 等待一帧确保矩阵更新
                 requestAnimationFrame(() => {
                     scene.updateMatrixWorld(true);
@@ -113,6 +127,18 @@ const loadModel = url => {
     });
 };
 
+// 设置当前进度信息
+const setProcessCur = (key, count) => {
+    processCur[key] = count + 1;
+    const processSum = Object.values(processCur).reduce((a, b) => a + b, 0);
+    const processPercent = processTotal !== 0 ? ((processSum / processTotal) * 100).toFixed(2) : 0;
+    // 传递线程进度信息
+    self.postMessage({
+        type: 'processing',
+        data: processPercent,
+    });
+};
+
 /**
  * 日照时间遍历
  */
@@ -124,19 +150,14 @@ const calcSunlight = callback => {
         return;
     }
 
-    const { getAllSunlightPos } = useSun();
-    const allSunlightPos = getAllSunlightPos();
-
     const raycaster = new THREE.Raycaster();
 
     // 确保场景矩阵已更新
     scene.updateMatrixWorld(true);
 
-    for (let i = 0; i < allSunlightPos.length; i++) {
-        const sunlightPosition = allSunlightPos[i];
+    for (let i = 0; i < allSunPosition.length; i++) {
+        const sunlightPosition = allSunPosition[i];
         sunLight.position.copy(sunlightPosition);
-
-        console.log('Sunlight calculate process: ', ((i / allSunlightPos.length) * 100).toFixed(2) + '%');
 
         for (let j = 0; j < houseLs.length; j++) {
             const houseMesh = houseLs[j];
@@ -164,6 +185,8 @@ const calcSunlight = callback => {
             if (!houseHourMap?.[houseLs[j]?.['name']]) houseHourMap[houseLs[j]['name']] = 0;
             if (!intersects.length) houseHourMap[houseLs[j]['name']] += 1;
         }
+
+        setProcessCur('sunLightHour', i);
     }
 
     if (callback) callback(houseHourMap);
@@ -181,12 +204,12 @@ const calcFieldView = callback => {
 
     // 遍历每户
     for (let i = 0; i < houseLs.length; i++) {
-        console.log('FieldView calculate process: ', ((i / houseLs.length) * 100).toFixed(2) + '%');
-
         const curHouseMesh = houseLs[i];
         const curMeshBox = new THREE.Box3().setFromObject(curHouseMesh);
         const { min, max } = curMeshBox;
         houseViewMap[curHouseMesh.name] = createfieldView(min.clone(), max.clone());
+
+        setProcessCur('fieldViewArea', i);
     }
 
     if (callback) callback(houseViewMap);
@@ -212,6 +235,15 @@ const createFanMesh = () => {
     });
 
     return new THREE.Mesh(geometry, fanMaterial);
+};
+
+// 三角形面积计算
+const calculateTriangleArea = (vertexA, vertexB, vertexC) => {
+    const AB = new THREE.Vector3().subVectors(vertexB, vertexA);
+    const AC = new THREE.Vector3().subVectors(vertexC, vertexA);
+    // 计算叉积
+    const cross = new THREE.Vector3().crossVectors(AB, AC);
+    return cross.length() / 2;
 };
 
 // 视野遍历计算
@@ -283,13 +315,34 @@ const createfieldView = (source, target) => {
     return meshArea;
 };
 
-// 三角形面积计算
-const calculateTriangleArea = (vertexA, vertexB, vertexC) => {
-    const AB = new THREE.Vector3().subVectors(vertexB, vertexA);
-    const AC = new THREE.Vector3().subVectors(vertexC, vertexA);
-    // 计算叉积
-    const cross = new THREE.Vector3().crossVectors(AB, AC);
-    return cross.length() / 2;
+// 线程资源释放
+const clearAllResource = () => {
+    const processSum = Object.values(processCur).reduce((a, b) => a + b, 0);
+    if (processSum >= processTotal) {
+        clearMeshCache(scene);
+        scene.clear();
+        renderer.dispose();
+        renderer.forceContextLoss(); // 强制丢失上下文
+        houseLs = [];
+        allSunPosition = null;
+        // 终止线程
+        self.postMessage({ type: 'finished' });
+    }
+};
+
+// 清除模型缓存
+const clearMeshCache = scene => {
+    scene.traverse(item => {
+        if (item.children) {
+            for (let i = 0; i < item.children.length; i++) {
+                clearMeshCache(item.children[i]);
+            }
+        }
+        if (item.type === 'Mesh') {
+            item.geometry.dispose();
+            item.material.dispose();
+        }
+    });
 };
 
 /**
@@ -327,6 +380,7 @@ self.onmessage = function (e) {
                     type: 'fieldViewCalcFinish',
                     data,
                 });
+                clearAllResource();
             });
             break;
     }

@@ -255,12 +255,26 @@ export class basicThree {
                     sunlightWorker.postMessage({ type: 'calculate' });
                     break;
                 case 'sunlightCalcFinish':
-                    console.log('Sunlight calculate result: ', data);
+                    console.log('Sunlight calculation result: ', data);
                     break;
                 case 'fieldViewCalcFinish':
-                    console.log('FieldView calculate result: ', data);
+                    console.log('FieldView calculation result: ', data);
+                    break;
+                case 'processing':
+                    console.log('Processing: ', data);
+                    break;
+                case 'finished':
+                    console.log('Worker calculation completed');
+                    sunlightWorker.terminate();
+                    canvas.remove();
                     break;
             }
+        };
+
+        sunlightWorker.onerror = error => {
+            console.error('Worker error:', error);
+            sunlightWorker.terminate();
+            canvas.remove();
         };
     }
 

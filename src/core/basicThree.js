@@ -186,62 +186,31 @@ export class basicThree {
                 this.set2DTag();
 
                 this.globalMesh = model;
+
+                // 光照计算
                 // this.setSunlightHours();
 
-                const canvas = document.createElement('canvas');
-                canvas.className = 'worker-canvas';
-                canvas.style.display = 'none';
-                document.body.appendChild(canvas);
-                const offscreen = canvas.transferControlToOffscreen();
-                const sunlightWorker = new Worker(new URL('../worker/sunlightWorker.js', import.meta.url), {
-                    type: 'module',
-                });
-                sunlightWorker.postMessage(
-                    {
-                        type: 'init',
-                        data: {
-                            canvas: offscreen,
-                        },
-                    },
-                    [offscreen]
-                );
-                sunlightWorker.onmessage = e => {
-                    const { type, data } = e.data;
-                    switch (type) {
-                        case 'ready':
-                            console.log('is ready');
-                            sunlightWorker.postMessage({ type: 'loadModel', data: '/zschjm.glb' });
-                        case 'modelLoaded':
-                            console.log('is modelLoaded');
-                            sunlightWorker.postMessage({ type: 'calculate' });
-                        case 'result':
-                            console.log('result: ', data);
-                    }
-                };
-
-                /**
-                 * 视野计算
-                 */
+                // 视野计算
                 // const axesHelper = new THREE.AxesHelper(150);
                 // this.scene.add(axesHelper);
 
                 // 设定当前户
-                const curHouseMesh = this.floorLs.find(v => v.name === '8D701');
-                const curHousePos = new THREE.Vector3();
-                curHouseMesh.getWorldPosition(curHousePos);
-                // this.scene.add(this.createSphere(curHousePos));
+                // const curHouseMesh = this.floorLs.find(v => v.name === '8D701');
+                // const curHousePos = new THREE.Vector3();
+                // curHouseMesh.getWorldPosition(curHousePos);
+                // // this.scene.add(this.createSphere(curHousePos));
 
-                // 获取当前户的两个端点
-                const curMeshBox = new THREE.Box3().setFromObject(curHouseMesh);
-                const boxHelper = new THREE.BoxHelper(curHouseMesh, 0xff0000);
-                this.scene.add(boxHelper);
-                const { min, max } = curMeshBox;
-                // this.scene.add(this.createSphere(min.clone(), '#5470c6')); // 左下角
-                // this.scene.add(this.createSphere(max.clone(), '#91cc75')); // 右下角
+                // // 获取当前户的两个端点
+                // const curMeshBox = new THREE.Box3().setFromObject(curHouseMesh);
+                // const boxHelper = new THREE.BoxHelper(curHouseMesh, 0xff0000);
+                // this.scene.add(boxHelper);
+                // const { min, max } = curMeshBox;
+                // // this.scene.add(this.createSphere(min.clone(), '#5470c6')); // 左下角
+                // // this.scene.add(this.createSphere(max.clone(), '#91cc75')); // 右下角
 
-                // 创建扇形
-                this.fieldMesh = this.createFanMesh();
-                this.scene.add(this.fieldMesh);
+                // // 创建扇形
+                // this.fieldMesh = this.createFanMesh();
+                // this.scene.add(this.fieldMesh);
 
                 // this.createfieldView(min.clone(), max.clone());
             },
@@ -250,6 +219,45 @@ export class basicThree {
                 console.error(error);
             }
         );
+    }
+
+    // 开始分析
+    startAnalysis() {
+        const canvas = document.createElement('canvas');
+        canvas.className = 'worker-canvas';
+        canvas.style.display = 'none';
+        document.body.appendChild(canvas);
+
+        const offscreen = canvas.transferControlToOffscreen();
+        const sunlightWorker = new Worker(new URL('../worker/sunlightWorker.js', import.meta.url), {
+            type: 'module',
+        });
+
+        sunlightWorker.postMessage(
+            {
+                type: 'init',
+                data: {
+                    canvas: offscreen,
+                },
+            },
+            [offscreen]
+        );
+
+        sunlightWorker.onmessage = e => {
+            const { type, data } = e.data;
+            switch (type) {
+                case 'ready':
+                    console.log('Worker renderer is ready');
+                    sunlightWorker.postMessage({ type: 'loadModel', data: '/zschjm.glb' });
+                case 'modelLoaded':
+                    console.log('Worker model is loaded');
+                    sunlightWorker.postMessage({ type: 'calculate' });
+                case 'sunlightCalcFinish':
+                    console.log('Sunlight calculate result: ', data);
+                case 'fieldViewCalcFinish':
+                    console.log('FieldView calculate result: ', data);
+            }
+        };
     }
 
     // 创建圆点

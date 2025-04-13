@@ -13,6 +13,7 @@ onMounted(() => {
     threeObj = new basicThree();
     threeObj.modelUrl = './zschjm.glb';
     threeObj.initModel();
+    threeObj.startAnalysis();
     initSun();
     initClick();
 });

@@ -249,13 +249,17 @@ export class basicThree {
                 case 'ready':
                     console.log('Worker renderer is ready');
                     sunlightWorker.postMessage({ type: 'loadModel', data: '/zschjm.glb' });
+                    break;
                 case 'modelLoaded':
                     console.log('Worker model is loaded');
                     sunlightWorker.postMessage({ type: 'calculate' });
+                    break;
                 case 'sunlightCalcFinish':
                     console.log('Sunlight calculate result: ', data);
+                    break;
                 case 'fieldViewCalcFinish':
                     console.log('FieldView calculate result: ', data);
+                    break;
             }
         };
     }
